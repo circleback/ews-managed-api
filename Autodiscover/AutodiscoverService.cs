@@ -435,11 +435,13 @@ namespace Microsoft.Exchange.WebServices.Autodiscover
         /// <param name="emailAddress">The email address to retrieve configuration settings for.</param>
         /// <param name="redirectionEmailAddresses">List of previous email addresses.</param>
         /// <param name="currentHop">Current number of redirection urls/addresses attempted so far.</param>
+        /// <param name="tryLastChanceRedirect"></param>
         /// <returns>The requested configuration settings.</returns>
         private TSettings InternalGetLegacyUserSettings<TSettings>(
             string emailAddress,
             List<string> redirectionEmailAddresses,
-            ref int currentHop)
+            ref int currentHop,
+            bool tryLastChanceRedirect = true)
             where TSettings : ConfigurationSettingsBase, new()
         {
             string domainName = EwsUtilities.DomainFromEmailAddress(emailAddress);
@@ -512,7 +514,8 @@ namespace Microsoft.Exchange.WebServices.Autodiscover
                                 return this.InternalGetLegacyUserSettings<TSettings>(
                                                 settings.RedirectTarget,
                                                 redirectionEmailAddresses,
-                                                ref currentHop);
+                                                ref currentHop,
+                                                tryLastChanceRedirect);
                             }
                             else
                             {
@@ -606,7 +609,7 @@ namespace Microsoft.Exchange.WebServices.Autodiscover
             // redirection URL to get the configuration settings for this email address. (This will be a common scenario for 
             // DataCenter deployments).
             Uri redirectionUrl = this.GetRedirectUrl(domainName);
-            if ((redirectionUrl != null) &&
+            if ((redirectionUrl != null) && tryLastChanceRedirect &&
                 this.TryLastChanceHostRedirection<TSettings>(
                     emailAddress,
                     redirectionUrl,
@@ -619,7 +622,7 @@ namespace Microsoft.Exchange.WebServices.Autodiscover
                 // Getting a redirection URL from an HTTP GET failed too. As a last chance, try to get an appropriate SRV Record
                 // using DnsQuery. If successful, use this redirection URL to get the configuration settings for this email address.
                 redirectionUrl = this.GetRedirectionUrlFromDnsSrvRecord(domainName);
-                if ((redirectionUrl != null) &&
+                if ((redirectionUrl != null) && tryLastChanceRedirect &&
                     this.TryLastChanceHostRedirection<TSettings>(
                         emailAddress,
                         redirectionUrl,
@@ -711,7 +714,8 @@ namespace Microsoft.Exchange.WebServices.Autodiscover
                                 settings = this.InternalGetLegacyUserSettings<TSettings>(
                                     settings.RedirectTarget,
                                     redirectionEmailAddresses,
-                                    ref currentHop);
+                                    ref currentHop,
+                                    tryLastChanceRedirect: false);
                                 return true;
                             case AutodiscoverResponseType.RedirectUrl:
                                 try
